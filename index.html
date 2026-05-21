@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Hydro-Québec Live Outage Map</title>
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background: #f4f6f9;
+      }
+
+      #app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      header {
+        background: #005fa4;
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+      }
+
+      header h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+
+      #status {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+
+      #map {
+        flex: 1;
+        width: 100%;
+      }
+
+      .popup h3 {
+        color: #d63031;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+        font-size: 1rem;
+      }
+
+      .popup p {
+        margin: 6px 0;
+        font-size: 0.88rem;
+        line-height: 1.4;
+      }
+
+      .popup strong {
+        color: #444;
+      }
+
+      .legend {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: white;
+        padding: 12px;
+        border-radius: 10px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        font-size: 0.85rem;
+      }
+
+      .legend-title {
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+
+      .legend-row {
+        display: flex;
+        align-items: center;
+        margin-top: 6px;
+      }
+
+      .legend-color {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+
+      .small {
+        background: #f39c12;
+      }
+
+      .medium {
+        background: #e17055;
+      }
+
+      .large {
+        background: #d63031;
+      }
+
+      @media (max-width: 700px) {
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        #status {
+          width: 100%;
+        }
+
+        .legend {
+          bottom: 10px;
+          right: 10px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app">
+      <header>
+        <h1>Hydro-Québec Live Outage Map</h1>
+        <div id="status">Initializing outage systems...</div>
+      </header>
+
+      <div id="map"></div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Outage Severity</div>
+
+      <div class="legend-row">
+        <div class="legend-color small"></div>
+        Small outage
+      </div>
+
+      <div class="legend-row">
+        <div class="legend-color medium"></div>
+        Medium outage
+      </div>
+
+      <div class="legend-row">
+        <div class="legend-color large"></div>
+        Major outage
+      </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+      // ===============================
+      // MAP INITIALIZATION
+      // ===============================
+
+      const map = L.map("map").setView([46.8139, -71.2082], 6);
+
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        {
+          attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+          subdomains: "abcd",
+          maxZoom: 20,
+        }
+      ).addTo(map);
+
+      const outageLayer = L.layerGroup().addTo(map);
+
+      // ===============================
+      // CONFIG
+      // ===============================
+
+      const BASE_URL = "https://pannes.hydroquebec.com/pannes/donnees/v3_0/";
+
+      const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
+      // ===============================
+      // STATUS UI
+      // ===============================
+
+      function updateStatus(text, color = "white") {
+        document.getElementById(
+          "status"
+        ).innerHTML = `<span style="color:${color}">
+        ${text}
+      </span>`;
+      }
+
+      // ===============================
+      // HELPERS
+      // ===============================
+
+      function getCause(code) {
+        const c = Number(code);
+
+        if ([11, 12, 13, 14, 15, 58, 70, 72, 73, 74, 79].includes(c)) {
+          return "Equipment failure";
+        }
+
+        if ([21, 22, 24, 25, 26].includes(c)) {
+          return "Weather conditions";
+        }
+
+        if ([31, 32, 33, 34, 41, 42, 43, 44, 54, 55, 56, 57].includes(c)) {
+          return "Accident / Grid incident";
+        }
+
+        if (c === 51) {
+          return "Vegetation / Trees";
+        }
+
+        if ([52, 53].includes(c)) {
+          return "Animal interference";
+        }
+
+        return "Under investigation";
+      }
+
+      function getStatus(code) {
+        const statuses = {
+          A: "Work assigned",
+          L: "Crew working",
+          R: "Crew en route",
+        };
+
+        return statuses[code] || "Assessment pending";
+      }
+
+      function getMarkerStyle(customers) {
+        if (customers >= 1000) {
+          return {
+            radius: 16,
+            color: "#d63031",
+          };
+        }
+
+        if (customers >= 100) {
+          return {
+            radius: 11,
+            color: "#e17055",
+          };
+        }
+
+        return {
+          radius: 7,
+          color: "#f39c12",
+        };
+      }
+
+      // ===============================
+      // SAFE JSON PARSER
+      // ===============================
+
+      function safeJsonParse(text) {
+        try {
+          return JSON.parse(text);
+        } catch {
+          const objectMatch = text.match(/\{[\s\S]*\}/);
+
+          if (objectMatch) {
+            try {
+              return JSON.parse(objectMatch[0]);
+            } catch {
+              return null;
+            }
+          }
+
+          const arrayMatch = text.match(/\[[\s\S]*\]/);
+
+          if (arrayMatch) {
+            try {
+              return JSON.parse(arrayMatch[0]);
+            } catch {
+              return null;
+            }
+          }
+
+          return null;
+        }
+      }
+
+      // ===============================
+      // EXTRACT VERSION TOKEN
+      // ===============================
+
+      function extractVersion(parsed, rawText) {
+        if (parsed?.version) {
+          return parsed.version;
+        }
+
+        if (parsed?.versionCourante) {
+          return parsed.versionCourante;
+        }
+
+        if (parsed?.date) {
+          return parsed.date;
+        }
+
+        const regex = /(\d{10,})/;
+
+        const match = rawText.match(regex);
+
+        if (match) {
+          return match[1];
+        }
+
+        return null;
+      }
+
+      // ===============================
+      // FETCH OUTAGE DATA
+      // ===============================
+
+      async function fetchOutages() {
+        try {
+          updateStatus("Loading outage version...");
+
+          // VERSION REQUEST
+          const versionResponse = await fetch(
+            `${CORS_PROXY}${encodeURIComponent(BASE_URL + "bisversion.json")}`
+          );
+
+          if (!versionResponse.ok) {
+            throw new Error("Failed to fetch version data");
+          }
+
+          const versionText = await versionResponse.text();
+
+          const versionParsed = safeJsonParse(versionText);
+
+          const version = extractVersion(versionParsed, versionText);
+
+          if (!version) {
+            console.error("VERSION RAW RESPONSE:", versionText);
+
+            throw new Error("Could not determine outage version");
+          }
+
+          updateStatus(`Loading outage map ${version}`);
+
+          // OUTAGE REQUEST
+          const outageResponse = await fetch(
+            `${CORS_PROXY}${encodeURIComponent(
+              `${BASE_URL}bismarkers${version}.json`
+            )}`
+          );
+
+          if (!outageResponse.ok) {
+            throw new Error("Failed to pull outage map");
+          }
+
+          const outageText = await outageResponse.text();
+
+          const outageParsed = safeJsonParse(outageText);
+
+          if (!outageParsed) {
+            console.error("OUTAGE RAW RESPONSE:", outageText);
+
+            throw new Error("Could not parse outage feed");
+          }
+
+          const outages = Array.isArray(outageParsed)
+            ? outageParsed
+            : outageParsed.pannes || [];
+
+          renderOutages(outages);
+        } catch (err) {
+          console.error("Pipeline breakdown details:", err);
+
+          updateStatus("Hydro-Québec feed unavailable", "#ff7675");
+        }
+      }
+
+      // ===============================
+      // RENDER OUTAGES
+      // ===============================
+
+      function renderOutages(outages) {
+        outageLayer.clearLayers();
+
+        if (!outages.length) {
+          updateStatus("No active outages detected");
+
+          return;
+        }
+
+        let totalCustomers = 0;
+
+        const bounds = [];
+
+        outages.forEach((outage) => {
+          try {
+            const customers = Number(outage[0]) || 0;
+
+            totalCustomers += customers;
+
+            const started = outage[1] || "Unknown";
+
+            const restoration = outage[2] || "Pending";
+
+            const coordData = outage[4];
+
+            const statusCode = outage[5] || "?";
+
+            const causeCode = outage[7];
+
+            let coords;
+
+            if (Array.isArray(coordData)) {
+              coords = coordData;
+            } else {
+              coords = JSON.parse(coordData);
+            }
+
+            if (!coords || coords.length < 2) {
+              return;
+            }
+
+            const lng = Number(coords[0]);
+
+            const lat = Number(coords[1]);
+
+            if (isNaN(lat) || isNaN(lng)) {
+              return;
+            }
+
+            bounds.push([lat, lng]);
+
+            const style = getMarkerStyle(customers);
+
+            const marker = L.circleMarker([lat, lng], {
+              radius: style.radius,
+              fillColor: style.color,
+              color: "#ffffff",
+              weight: 1.5,
+              opacity: 1,
+              fillOpacity: 0.85,
+            });
+
+            marker.bindPopup(`
+          <div class="popup">
+
+            <h3>Power Outage</h3>
+
+            <p>
+              <strong>Customers:</strong>
+              ${customers.toLocaleString()}
+            </p>
+
+            <p>
+              <strong>Started:</strong>
+              ${started}
+            </p>
+
+            <p>
+              <strong>Estimated Restoration:</strong>
+              ${restoration}
+            </p>
+
+            <p>
+              <strong>Cause:</strong>
+              ${getCause(causeCode)}
+            </p>
+
+            <p>
+              <strong>Status:</strong>
+              ${getStatus(statusCode)}
+            </p>
+
+          </div>
+        `);
+
+            outageLayer.addLayer(marker);
+          } catch (err) {
+            console.warn("Skipping malformed outage", err);
+          }
+        });
+
+        updateStatus(
+          `${
+            outages.length
+          } outages • ${totalCustomers.toLocaleString()} customers affected`
+        );
+
+        if (bounds.length > 0) {
+          map.fitBounds(bounds, {
+            padding: [40, 40],
+          });
+        }
+      }
+
+      // ===============================
+      // INITIAL LOAD
+      // ===============================
+
+      fetchOutages();
+
+      // Refresh every 5 minutes
+      setInterval(fetchOutages, 300000);
+    </script>
+  </body>
+</html>
