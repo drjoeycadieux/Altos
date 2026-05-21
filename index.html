@@ -488,25 +488,46 @@
         return statuses[code] || "Assessment pending";
       }
 
-      function getMarkerStyle(customers) {
+      function getOutageStyle(customers) {
         if (customers >= 1000) {
           return {
-            radius: 16,
             color: "#d63031",
+            fillColor: "#d63031",
+            radius: 0.08,
           };
         }
 
         if (customers >= 100) {
           return {
-            radius: 11,
             color: "#e17055",
+            fillColor: "#e17055",
+            radius: 0.06,
           };
         }
 
         return {
-          radius: 7,
           color: "#f39c12",
+          fillColor: "#f39c12",
+          radius: 0.04,
         };
+      }
+
+      // ===============================
+      // POLYGON GENERATOR
+      // ===============================
+
+      function createPolygonAroundPoint(lat, lng, radiusInDegrees = 0.05) {
+        const sides = 12;
+        const points = [];
+
+        for (let i = 0; i < sides; i++) {
+          const angle = (i / sides) * Math.PI * 2;
+          const x = lng + radiusInDegrees * Math.cos(angle);
+          const y = lat + radiusInDegrees * Math.sin(angle);
+          points.push([y, x]);
+        }
+
+        return points;
       }
 
       // ===============================
@@ -624,7 +645,7 @@
       }
 
       // ===============================
-      // RENDER OUTAGES
+      // RENDER OUTAGES (POLYGONS)
       // ===============================
 
       function renderOutages(outages) {
@@ -674,18 +695,24 @@
               return;
             }
 
-            const style = getMarkerStyle(customers);
+            const style = getOutageStyle(customers);
 
-            const marker = L.circleMarker([lat, lng], {
-              radius: style.radius,
-              fillColor: style.color,
-              color: "#fff",
-              weight: 1.5,
+            // Create polygon around the outage point
+            const polygonCoords = createPolygonAroundPoint(
+              lat,
+              lng,
+              style.radius
+            );
+
+            const polygon = L.polygon(polygonCoords, {
+              color: style.color,
+              fillColor: style.fillColor,
+              weight: 2,
               opacity: 1,
-              fillOpacity: 0.85,
+              fillOpacity: 0.7,
             });
 
-            marker.bindPopup(`
+            polygon.bindPopup(`
             <div class="popup">
 
               <h3>Power Outage</h3>
@@ -718,7 +745,7 @@
             </div>
           `);
 
-            outageLayer.addLayer(marker);
+            outageLayer.addLayer(polygon);
           } catch (err) {
             console.warn("Skipping malformed outage", err);
           }
