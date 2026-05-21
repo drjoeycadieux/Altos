@@ -556,8 +556,11 @@
         try {
           updateStatus("Loading outage systems...");
 
+          const versionUrl = `${BASE_URL}bisversion.json`;
+          const encodedVersionUrl = encodeURIComponent(versionUrl);
+
           const versionResponse = await fetch(
-            `${CORS_PROXY}${BASE_URL}bisversion.json`,
+            `${CORS_PROXY}${encodedVersionUrl}`,
             {
               headers: {
                 Accept: "application/json",
@@ -581,8 +584,11 @@
 
           updateStatus(`Loading outage map ${version}`);
 
+          const outageUrl = `${BASE_URL}bismarkers${version}.json`;
+          const encodedOutageUrl = encodeURIComponent(outageUrl);
+
           const outageResponse = await fetch(
-            `${CORS_PROXY}${BASE_URL}bismarkers${version}.json`,
+            `${CORS_PROXY}${encodedOutageUrl}`,
             {
               headers: {
                 Accept: "application/json",
