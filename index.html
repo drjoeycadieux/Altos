@@ -433,6 +433,9 @@
 
       const BASE_URL = "https://pannes.hydroquebec.com/pannes/donnees/v3_0/";
 
+      // CORS Proxy - using allorigins.win (reliable and maintained)
+      const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
       // ===============================
       // STATUS UI
       // ===============================
@@ -558,13 +561,9 @@
 
           console.log("Fetching version from:", versionUrl);
 
-          const versionResponse = await fetch(versionUrl, {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-            mode: "cors",
-          });
+          const versionResponse = await fetch(
+            `${CORS_PROXY}${encodeURIComponent(versionUrl)}`
+          );
 
           if (!versionResponse.ok) {
             throw new Error(
@@ -592,13 +591,9 @@
 
           console.log("Fetching outages from:", outageUrl);
 
-          const outageResponse = await fetch(outageUrl, {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-            mode: "cors",
-          });
+          const outageResponse = await fetch(
+            `${CORS_PROXY}${encodeURIComponent(outageUrl)}`
+          );
 
           if (!outageResponse.ok) {
             throw new Error(
