@@ -40,7 +40,7 @@
       }
 
       /* =========================
-       SIDENAV
+       SIDEBAR
     ========================== */
 
       .sidebar {
@@ -100,7 +100,7 @@
       }
 
       /* =========================
-       MAIN AREA
+       MAIN
     ========================== */
 
       .main {
@@ -285,10 +285,7 @@
   </head>
 
   <body>
-    <!-- =========================
-       SIDEBAR
-  ========================== -->
-
+    <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2>Hydro Québec</h2>
@@ -329,10 +326,7 @@
       </div>
     </aside>
 
-    <!-- =========================
-       MAIN CONTENT
-  ========================== -->
-
+    <!-- MAIN -->
     <div class="main">
       <header>
         <h1>Hydro-Québec Live Outage Map</h1>
@@ -362,7 +356,7 @@
         </div>
       </div>
 
-      <!-- GITHUB BUTTON -->
+      <!-- GITHUB -->
       <a
         class="github-btn"
         href="https://github.com/"
@@ -388,8 +382,9 @@
       // MAP INITIALIZATION
       // ===============================
 
-      const map = L.map("map").setView([46.8139, -71.2082], 6);
+      const map = L.map("map").setView([52.0, -71.5], 5);
 
+      // BASE MAP
       L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
         {
@@ -398,6 +393,37 @@
           maxZoom: 20,
         }
       ).addTo(map);
+
+      // ===============================
+      // QUEBEC PROVINCE HIGHLIGHT
+      // ===============================
+
+      fetch(
+        "https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/canada.geojson"
+      )
+        .then((response) => response.json())
+        .then((data) => {
+          const quebec = data.features.find(
+            (feature) => feature.properties.name === "Quebec"
+          );
+
+          if (!quebec) {
+            return;
+          }
+
+          L.geoJSON(quebec, {
+            style: {
+              color: "#ff6b00",
+              weight: 3,
+              opacity: 1,
+              fillColor: "#ff9500",
+              fillOpacity: 0.18,
+            },
+          }).addTo(map);
+        })
+        .catch((err) => {
+          console.error("Failed to load Quebec boundary", err);
+        });
 
       const outageLayer = L.layerGroup().addTo(map);
 
@@ -483,7 +509,7 @@
       }
 
       // ===============================
-      // SAFE PARSER
+      // SAFE JSON PARSER
       // ===============================
 
       function safeJsonParse(text) {
@@ -573,7 +599,7 @@
       }
 
       // ===============================
-      // RENDER MAP
+      // RENDER OUTAGES
       // ===============================
 
       function renderOutages(outages) {
@@ -586,8 +612,6 @@
         }
 
         let totalCustomers = 0;
-
-        const bounds = [];
 
         outages.forEach((outage) => {
           try {
@@ -624,8 +648,6 @@
             if (isNaN(lat) || isNaN(lng)) {
               return;
             }
-
-            bounds.push([lat, lng]);
 
             const style = getMarkerStyle(customers);
 
@@ -682,12 +704,6 @@
             outages.length
           } outages • ${totalCustomers.toLocaleString()} customers affected`
         );
-
-        if (bounds.length > 0) {
-          map.fitBounds(bounds, {
-            padding: [40, 40],
-          });
-        }
       }
 
       // INITIAL LOAD
