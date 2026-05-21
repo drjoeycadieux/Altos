@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Hydro-Québec Live Outage Map</title>
@@ -10,6 +11,12 @@
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     />
 
     <style>
@@ -22,15 +29,86 @@
       html,
       body {
         height: 100%;
+        overflow: hidden;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Helvetica, Arial, sans-serif;
         background: #f4f6f9;
       }
 
-      #app {
+      body {
+        display: flex;
+      }
+
+      /* =========================
+       SIDENAV
+    ========================== */
+
+      .sidebar {
+        width: 280px;
+        background: #0f172a;
+        color: white;
         display: flex;
         flex-direction: column;
         height: 100vh;
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
+        z-index: 1200;
+      }
+
+      .sidebar-header {
+        padding: 24px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .sidebar-header h2 {
+        font-size: 1.25rem;
+        margin-bottom: 6px;
+      }
+
+      .sidebar-header p {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        line-height: 1.4;
+      }
+
+      .sidebar-menu {
+        flex: 1;
+        padding: 20px 0;
+      }
+
+      .sidebar-menu a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 20px;
+        color: rgba(255, 255, 255, 0.85);
+        text-decoration: none;
+        transition: 0.2s ease;
+        font-size: 0.95rem;
+      }
+
+      .sidebar-menu a:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+      }
+
+      .sidebar-footer {
+        padding: 18px 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.65);
+        line-height: 1.5;
+      }
+
+      /* =========================
+       MAIN AREA
+    ========================== */
+
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        position: relative;
       }
 
       header {
@@ -63,6 +141,10 @@
         width: 100%;
       }
 
+      /* =========================
+       POPUP
+    ========================== */
+
       .popup h3 {
         color: #d63031;
         margin-bottom: 8px;
@@ -81,27 +163,32 @@
         color: #444;
       }
 
+      /* =========================
+       LEGEND
+    ========================== */
+
       .legend {
         position: absolute;
         bottom: 20px;
         right: 20px;
         background: white;
-        padding: 12px;
-        border-radius: 10px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+        padding: 14px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         z-index: 1000;
         font-size: 0.85rem;
+        min-width: 170px;
       }
 
       .legend-title {
         font-weight: bold;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
       }
 
       .legend-row {
         display: flex;
         align-items: center;
-        margin-top: 6px;
+        margin-top: 7px;
       }
 
       .legend-color {
@@ -123,51 +210,174 @@
         background: #d63031;
       }
 
-      @media (max-width: 700px) {
-        header {
+      /* =========================
+       FOOTER
+    ========================== */
+
+      footer {
+        background: #ffffff;
+        border-top: 1px solid #ddd;
+        padding: 12px 20px;
+        font-size: 0.85rem;
+        color: #555;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* =========================
+       GITHUB BUTTON
+    ========================== */
+
+      .github-btn {
+        position: absolute;
+        bottom: 90px;
+        right: 20px;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        background: #111827;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        font-size: 1.5rem;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+        transition: 0.2s ease;
+        z-index: 1200;
+      }
+
+      .github-btn:hover {
+        transform: scale(1.08);
+        background: #000;
+      }
+
+      /* =========================
+       MOBILE
+    ========================== */
+
+      @media (max-width: 900px) {
+        body {
           flex-direction: column;
-          align-items: flex-start;
         }
 
-        #status {
+        .sidebar {
           width: 100%;
+          height: auto;
+        }
+
+        .main {
+          height: calc(100vh - 240px);
         }
 
         .legend {
-          bottom: 10px;
+          bottom: 80px;
           right: 10px;
+        }
+
+        .github-btn {
+          bottom: 100px;
+          right: 15px;
         }
       }
     </style>
   </head>
 
   <body>
-    <div id="app">
+    <!-- =========================
+       SIDEBAR
+  ========================== -->
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Hydro Québec</h2>
+
+        <p>Real-time outage monitoring dashboard for Québec power systems.</p>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#">
+          <i class="fa-solid fa-map-location-dot"></i>
+          Live Outage Map
+        </a>
+
+        <a href="#">
+          <i class="fa-solid fa-bolt"></i>
+          Active Incidents
+        </a>
+
+        <a href="#">
+          <i class="fa-solid fa-users"></i>
+          Customers Affected
+        </a>
+
+        <a href="#">
+          <i class="fa-solid fa-clock"></i>
+          Restoration Tracking
+        </a>
+
+        <a href="#">
+          <i class="fa-solid fa-circle-info"></i>
+          System Status
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        Hydro-Québec unofficial monitoring dashboard.<br />
+        Data updates every 5 minutes.
+      </div>
+    </aside>
+
+    <!-- =========================
+       MAIN CONTENT
+  ========================== -->
+
+    <div class="main">
       <header>
         <h1>Hydro-Québec Live Outage Map</h1>
+
         <div id="status">Initializing outage systems...</div>
       </header>
 
       <div id="map"></div>
-    </div>
 
-    <div class="legend">
-      <div class="legend-title">Outage Severity</div>
+      <!-- LEGEND -->
+      <div class="legend">
+        <div class="legend-title">Outage Severity</div>
 
-      <div class="legend-row">
-        <div class="legend-color small"></div>
-        Small outage
+        <div class="legend-row">
+          <div class="legend-color small"></div>
+          Small outage
+        </div>
+
+        <div class="legend-row">
+          <div class="legend-color medium"></div>
+          Medium outage
+        </div>
+
+        <div class="legend-row">
+          <div class="legend-color large"></div>
+          Major outage
+        </div>
       </div>
 
-      <div class="legend-row">
-        <div class="legend-color medium"></div>
-        Medium outage
-      </div>
+      <!-- GITHUB BUTTON -->
+      <a
+        class="github-btn"
+        href="https://github.com/"
+        target="_blank"
+        title="GitHub Repository"
+      >
+        <i class="fab fa-github"></i>
+      </a>
 
-      <div class="legend-row">
-        <div class="legend-color large"></div>
-        Major outage
-      </div>
+      <!-- FOOTER -->
+      <footer>
+        <div>© 2026 Hydro Québec Live Map</div>
+
+        <div>Powered by Leaflet + Hydro-Québec APIs</div>
+      </footer>
     </div>
 
     <!-- Leaflet JS -->
@@ -207,8 +417,8 @@
         document.getElementById(
           "status"
         ).innerHTML = `<span style="color:${color}">
-        ${text}
-      </span>`;
+          ${text}
+        </span>`;
       }
 
       // ===============================
@@ -273,39 +483,19 @@
       }
 
       // ===============================
-      // SAFE JSON PARSER
+      // SAFE PARSER
       // ===============================
 
       function safeJsonParse(text) {
         try {
           return JSON.parse(text);
         } catch {
-          const objectMatch = text.match(/\{[\s\S]*\}/);
-
-          if (objectMatch) {
-            try {
-              return JSON.parse(objectMatch[0]);
-            } catch {
-              return null;
-            }
-          }
-
-          const arrayMatch = text.match(/\[[\s\S]*\]/);
-
-          if (arrayMatch) {
-            try {
-              return JSON.parse(arrayMatch[0]);
-            } catch {
-              return null;
-            }
-          }
-
           return null;
         }
       }
 
       // ===============================
-      // EXTRACT VERSION TOKEN
+      // VERSION EXTRACTION
       // ===============================
 
       function extractVersion(parsed, rawText) {
@@ -333,21 +523,16 @@
       }
 
       // ===============================
-      // FETCH OUTAGE DATA
+      // FETCH OUTAGES
       // ===============================
 
       async function fetchOutages() {
         try {
-          updateStatus("Loading outage version...");
+          updateStatus("Loading outage systems...");
 
-          // VERSION REQUEST
           const versionResponse = await fetch(
             `${CORS_PROXY}${encodeURIComponent(BASE_URL + "bisversion.json")}`
           );
-
-          if (!versionResponse.ok) {
-            throw new Error("Failed to fetch version data");
-          }
 
           const versionText = await versionResponse.text();
 
@@ -356,31 +541,22 @@
           const version = extractVersion(versionParsed, versionText);
 
           if (!version) {
-            console.error("VERSION RAW RESPONSE:", versionText);
-
-            throw new Error("Could not determine outage version");
+            throw new Error("Version fetch failed");
           }
 
           updateStatus(`Loading outage map ${version}`);
 
-          // OUTAGE REQUEST
           const outageResponse = await fetch(
             `${CORS_PROXY}${encodeURIComponent(
               `${BASE_URL}bismarkers${version}.json`
             )}`
           );
 
-          if (!outageResponse.ok) {
-            throw new Error("Failed to pull outage map");
-          }
-
           const outageText = await outageResponse.text();
 
           const outageParsed = safeJsonParse(outageText);
 
           if (!outageParsed) {
-            console.error("OUTAGE RAW RESPONSE:", outageText);
-
             throw new Error("Could not parse outage feed");
           }
 
@@ -390,14 +566,14 @@
 
           renderOutages(outages);
         } catch (err) {
-          console.error("Pipeline breakdown details:", err);
+          console.error(err);
 
           updateStatus("Hydro-Québec feed unavailable", "#ff7675");
         }
       }
 
       // ===============================
-      // RENDER OUTAGES
+      // RENDER MAP
       // ===============================
 
       function renderOutages(outages) {
@@ -456,44 +632,44 @@
             const marker = L.circleMarker([lat, lng], {
               radius: style.radius,
               fillColor: style.color,
-              color: "#ffffff",
+              color: "#fff",
               weight: 1.5,
               opacity: 1,
               fillOpacity: 0.85,
             });
 
             marker.bindPopup(`
-          <div class="popup">
+            <div class="popup">
 
-            <h3>Power Outage</h3>
+              <h3>Power Outage</h3>
 
-            <p>
-              <strong>Customers:</strong>
-              ${customers.toLocaleString()}
-            </p>
+              <p>
+                <strong>Customers:</strong>
+                ${customers.toLocaleString()}
+              </p>
 
-            <p>
-              <strong>Started:</strong>
-              ${started}
-            </p>
+              <p>
+                <strong>Started:</strong>
+                ${started}
+              </p>
 
-            <p>
-              <strong>Estimated Restoration:</strong>
-              ${restoration}
-            </p>
+              <p>
+                <strong>Restoration:</strong>
+                ${restoration}
+              </p>
 
-            <p>
-              <strong>Cause:</strong>
-              ${getCause(causeCode)}
-            </p>
+              <p>
+                <strong>Cause:</strong>
+                ${getCause(causeCode)}
+              </p>
 
-            <p>
-              <strong>Status:</strong>
-              ${getStatus(statusCode)}
-            </p>
+              <p>
+                <strong>Status:</strong>
+                ${getStatus(statusCode)}
+              </p>
 
-          </div>
-        `);
+            </div>
+          `);
 
             outageLayer.addLayer(marker);
           } catch (err) {
@@ -514,10 +690,7 @@
         }
       }
 
-      // ===============================
       // INITIAL LOAD
-      // ===============================
-
       fetchOutages();
 
       // Refresh every 5 minutes
