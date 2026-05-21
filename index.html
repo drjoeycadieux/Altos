@@ -433,8 +433,6 @@
 
       const BASE_URL = "https://pannes.hydroquebec.com/pannes/donnees/v3_0/";
 
-      const CORS_PROXY = "https://thingproxy.freeboard.io/fetch/";
-
       // ===============================
       // STATUS UI
       // ===============================
@@ -558,47 +556,58 @@
 
           const versionUrl = `${BASE_URL}bisversion.json`;
 
-          const versionResponse = await fetch(
-            `${CORS_PROXY}${versionUrl}`,
-            {
-              headers: {
-                Accept: "application/json",
-              },
-            }
-          );
+          console.log("Fetching version from:", versionUrl);
+
+          const versionResponse = await fetch(versionUrl, {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            mode: "cors",
+          });
 
           if (!versionResponse.ok) {
-            throw new Error(`HTTP error! status: ${versionResponse.status}`);
+            throw new Error(
+              `Version fetch failed with status: ${versionResponse.status}`
+            );
           }
 
           const versionText = await versionResponse.text();
+          console.log("Version response:", versionText);
 
           const versionParsed = safeJsonParse(versionText);
 
           const version = extractVersion(versionParsed, versionText);
 
           if (!version) {
-            throw new Error("Version fetch failed");
+            throw new Error(
+              "Could not extract version from response: " + versionText
+            );
           }
 
+          console.log("Extracted version:", version);
           updateStatus(`Loading outage map ${version}`);
 
           const outageUrl = `${BASE_URL}bismarkers${version}.json`;
 
-          const outageResponse = await fetch(
-            `${CORS_PROXY}${outageUrl}`,
-            {
-              headers: {
-                Accept: "application/json",
-              },
-            }
-          );
+          console.log("Fetching outages from:", outageUrl);
+
+          const outageResponse = await fetch(outageUrl, {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            mode: "cors",
+          });
 
           if (!outageResponse.ok) {
-            throw new Error(`HTTP error! status: ${outageResponse.status}`);
+            throw new Error(
+              `Outage fetch failed with status: ${outageResponse.status}`
+            );
           }
 
           const outageText = await outageResponse.text();
+          console.log("Outage response length:", outageText.length);
 
           const outageParsed = safeJsonParse(outageText);
 
@@ -610,9 +619,10 @@
             ? outageParsed
             : outageParsed.pannes || [];
 
+          console.log("Parsed outages count:", outages.length);
           renderOutages(outages);
         } catch (err) {
-          console.error(err);
+          console.error("Error fetching outages:", err);
 
           updateStatus("Hydro-Québec feed unavailable", "#ff7675");
         }
